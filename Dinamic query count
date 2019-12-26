@@ -1,0 +1,81 @@
+
+ALTER PROCEDURE [dbo].[SP_Passenger_with_filter_count] 
+	(
+		@WHERE_IN_FLIGHT NVARCHAR(MAX),
+		@IS_RISK BIT,
+		@IS_BLACKLIST BIT,
+		@OUT_COUNT INT OUTPUT
+	)
+AS
+BEGIN
+	DECLARE @SELECT NVARCHAR(MAX),
+			@statements NVARCHAR(MAX),
+			@risk_join NVARCHAR(MAX),
+			@black_join NVARCHAR(MAX);
+			
+			SET @risk_join = N'
+			' + IIF(@IS_RISK = 1, ' JOIN ', ' LEFT JOIN ' ) + ' RiskProfiles (NOLOCK) PROFI
+				ON 
+					    IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PROFI.a)
+					AND IIF((ISNULL(PROFI.a, 1) + ISNULL(PROFI.a, -1)) = 0, 1, PSG.a) BETWEEN  ISNULL(PROFI.a, 1) AND ISNULL(PROFI.a, 2)
+					AND IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PROFI.a)
+					AND PSG.a = IIF(PROFI.a IS NULL, PSG.a, cast(PROFI.a as date))
+					AND IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PROFI.a)
+					AND IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PROFI.a)
+
+					AND IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', FIF.a) = IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PROFI.a)
+					AND IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', FIF.a) = IIF(LEN(RTRIM(ISNULL(PROFI.a, ''''))) = 0, ''*'', PROFI.a)
+			';
+	
+		SET @black_join = N'
+			' + IIF(@lista-roja = 1, ' JOIN ', ' LEFT JOIN ' ) + ' BlackLists (NOLOCK) BLK
+				ON  Enabled = 1
+					AND   IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', BLK.a)
+				   AND IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', BLK.a)
+				   AND IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', BLK.a)
+				   AND IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', BLK.a)
+				   AND IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', PSG.a) = IIF(LEN(RTRIM(ISNULL(BLK.a, ''''))) = 0, ''*'', BLK.a)
+				   AND PSG.a = IIF(BLK.a IS NULL, PSG.a, cast(BLK.a as date))
+				   AND PSG.DateOfBirth = IIF(BLK.DateOfBirth IS NULL, PSG.DateOfBirth, cast(BLK.DateOfBirth as date))
+				   AND IIF(LEN(RTRIM(ISNULL(BLK.Sex, ''''))) = 0, ''*'', PSG.Gender) = IIF(LEN(RTRIM(ISNULL(BLK.Sex, ''''))) = 0, ''*'', BLK.Sex)
+		    ';
+			
+	SET @SELECT = N'
+	WITH b AS (	
+		SELECT DISTINCT
+				 [a]
+				,[a]
+		FROM xx (NOLOCK)
+		WHERE CONCAT(j, ''-'' ,k, ''-'' , l, ''-'' , ;) 
+		IN 
+		(
+			select 
+				CONCAT(a, ''-'' ,a,''-'', MAX(a),''-'', MAX(a))
+			from 
+				b
+			GROUP BY 
+				b,a
+		)
+	)
+	SELECT
+		 @TOTAL_COUNT = COUNT( *)
+	FROM 
+		PassengerInfo (NOLOCK) PSG 
+			JOIN gg FIF
+			    ON 
+				    PSG.Airline = FIF.Airline AND FIF.a = PSG.a AND FIF.a = PSG.a AND FIF.a = PSG.a
+					' + @black_join + '
+					' + @risk_join + '
+	';
+
+				
+	SET @statements = CAST(
+				(@SELECT + IIF(LEN(RTRIM(@WHERE_IN_FLIGHT)) = 0, ' ', N' WHERE '+ @WHERE_IN_FLIGHT) 
+				) AS NVARCHAR(MAX));
+
+	print(@statements);
+
+		EXECUTE sys.sp_executesql @stmt=@statements,
+								  @params = N'@TOTAL_COUNT INT OUTPUT',
+								  @TOTAL_COUNT = @OUT_COUNT OUTPUT;
+END;
